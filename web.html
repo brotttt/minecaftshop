@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minecraft Shop</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #0d1a2b;
+            color: white;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        h1 {
+            margin: 20px 0;
+            color: #f39c12;
+        }
+        .categories {
+            display: flex;
+            gap: 20px;
+            margin: 20px 0;
+        }
+        .categories button {
+            padding: 10px 20px;
+            background-color: #f39c12;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .categories button:hover {
+            background-color: #d35400;
+        }
+        .shop-container {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            max-width: 1000px;
+            padding: 20px;
+        }
+        .item {
+            background-color: #e67e22;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            transition: transform 0.3s, background-color 0.3s;
+            cursor: pointer;
+        }
+        .item:hover {
+            transform: scale(1.1);
+            background-color: #d35400;
+        }
+        .item img {
+            width: 64px;
+            height: 64px;
+        }
+        .item span {
+            display: block;
+            margin-top: 10px;
+            font-size: 1.2em;
+        }
+        .cart {
+            margin-top: 30px;
+            width: 100%;
+            max-width: 600px;
+            padding: 15px;
+            background: #34495e;
+            border-radius: 10px;
+        }
+        .cart h2 {
+            text-align: center;
+        }
+        .cart-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+        .cart-summary {
+            text-align: right;
+            margin-top: 10px;
+        }
+        .delivery-options {
+            margin-top: 20px;
+        }
+        button {
+            margin-top: 20px;
+            padding: 10px 15px;
+            background-color: #f39c12;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #d35400;
+        }
+        .hidden {
+            display: none;
+        }
+        .enchantments {
+            margin-top: 10px;
+        }
+        .enchantment-item {
+            display: flex;
+            justify-content: space-between;
+            background-color: #f39c12;
+            padding: 8px;
+            border-radius: 5px;
+            margin-top: 5px;
+            cursor: pointer;
+        }
+        .enchantment-item:hover {
+            background-color: #d35400;
+        }
+    </style>
+</head>
+<body>
+    <h1>✨ Minecraft Shop ✨</h1>
+
+    <!-- Minecraft-Name -->
+    <div>
+        <label for="minecraft-name">Minecraft Name:</label>
+        <input type="text" id="minecraft-name" placeholder="Dein Minecraft Name" style="margin-bottom: 20px;">
+    </div>
+
+    <!-- Kategorien -->
+    <div class="categories">
+        <button onclick="showCategory('rockets')">🚀 Raketen</button>
+        <button onclick="showCategory('potions')">🧪 Tränke</button>
+        <button onclick="showCategory('swords')">⚔️ Schwerter</button>
+    </div>
+
+    <!-- Shop Container -->
+    <div id="shop" class="shop-container"></div>
+
+    <!-- Warenkorb -->
+    <div class="cart" id="cart">
+        <h2>🛒 Warenkorb</h2>
+        <div id="cart-items"></div>
+        <div class="cart-summary" id="cart-summary">Gesamt: 0 Dias</div>
+        <div class="delivery-options">
+            <label>
+                <input type="radio" name="delivery" id="pickup" value="pickup" checked onchange="updateDeliveryOptions()"> Abholung (0 Dias)
+            </label>
+            <label>
+                <input type="radio" name="delivery" id="delivery" value="delivery" onchange="updateDeliveryOptions()"> Lieferung (3 Dias)
+            </label>
+            <input type="text" id="coordinates" placeholder="x y z (Koordinaten)" style="display:none; margin-top: 10px; width: 100%;">
+        </div>
+        <button onclick="submitOrder()">Bestellung aufgeben</button>
+    </div>
+
+    <script>
+        let cart = [];
+        let total = 0;
+        let selectedSwordEnchantments = [];
+
+        // Kategorien Daten
+        const categories = {
+            rockets: [
+                { name: "Raketen Stufe I", price: 2, imageUrl: "https://de.minecraft.wiki/images/Feuerwerksrakete.png?bd82b" },
+                { name: "Raketen Stufe II", price: 3, imageUrl: "https://de.minecraft.wiki/images/Feuerwerksrakete.png?bd82b" },
+                { name: "Raketen Stufe III", price: 4, imageUrl: "https://de.minecraft.wiki/images/Feuerwerksrakete.png?bd82b" }
+            ],
+            potions: [
+                { name: "Trank der Stärke II", price: 1, imageUrl: "https://de.minecraft.wiki/images/Trank_der_St%C3%A4rke.png?366a8" },
+                { name: "Trank der Schnelligkeit II", price: 1, imageUrl: "https://de.minecraft.wiki/images/Trank_der_St%C3%A4rke.png?366a8" },
+                { name: "Trank der Heilung II", price: 1, imageUrl: "https://de.minecraft.wiki/images/Trank_der_St%C3%A4rke.png?366a8" }
+            ],
+            swords: [
+                { name: "Diamantschwert", price: 2, imageUrl: "https://w7.pngwing.com/pngs/186/19/png-transparent-minecraft-pocket-edition-thinkgeek-minecraft-next-generation-diamond-sword-coloring-book-others-angle-video-game-mojang.png", enchants: ["Schärfe V", "Plünderung III", "Verbrennung I", "Haltbarkeit III", "Mending", "Schwungkraft III"] },
+                { name: "Netheriteschwert", price: 16, imageUrl: "data:image/jpeg;base64,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", enchants: ["Schärfe V", "Plünderung III", "Verbrennung I", "Haltbarkeit III", "Mending", "Schwungkraft III"] }
+            ]
+        };
+
+        function showCategory(category) {
+            const shopContainer = document.getElementById('shop');
+            shopContainer.innerHTML = '';
+            categories[category].forEach(item => {
+                let itemHTML = `
+                    <div class="item" onclick="addToCart('${item.name}', ${item.price}, '${item.imageUrl}', '${category}')">
+                        <img src="${item.imageUrl}" alt="${item.name}">
+                        <span>${item.name}</span>
+                        <span>${item.price} Dias</span>
+                    </div>
+                `;
+
+                if (category === 'swords') {
+                    itemHTML += `<div class="enchantments" id="enchantments-${item.name.replace(/\s+/g, '-')}" style="display:none;"></div>`;
+                }
+
+                shopContainer.innerHTML += itemHTML;
+            });
+        }
+
+        function addToCart(itemName, price, imageUrl, category) {
+            const existingItem = cart.find(cartItem => cartItem.name === itemName);
+            if (existingItem) {
+                existingItem.quantity++;
+            } else {
+                cart.push({ name: itemName, price, quantity: 1, imageUrl, category });
+            }
+
+            // Show enchantments for swords
+            if (category === 'swords') {
+                const enchantmentsContainer = document.getElementById(`enchantments-${itemName.replace(/\s+/g, '-')}`);
+                enchantmentsContainer.style.display = 'block';
+                enchantmentsContainer.innerHTML = '';
+                categories.swords.forEach(sword => {
+                    if (sword.name === itemName) {
+                        sword.enchants.forEach(enchant => {
+                            enchantmentsContainer.innerHTML += `
+                                <div class="enchantment-item" onclick="selectEnchantment('${itemName}', '${enchant}')">
+                                    <span>${enchant}</span>
+                                    <span>+3 Dias</span>
+                                </div>
+                            `;
+                        });
+                    }
+                });
+            }
+
+            updateCart();
+        }
+
+        function selectEnchantment(swordName, enchantment) {
+            if (!selectedSwordEnchantments[swordName]) {
+                selectedSwordEnchantments[swordName] = [];
+            }
+            selectedSwordEnchantments[swordName].push(enchantment);
+            updateCart();
+        }
+
+        function updateCart() {
+            const cartContainer = document.getElementById('cart-items');
+            const cartSummary = document.getElementById('cart-summary');
+            cartContainer.innerHTML = '';
+            total = 0;
+
+            cart.forEach(item => {
+                cartContainer.innerHTML += `
+                    <div class="cart-item">
+                        <span>${item.quantity}x ${item.name}</span>
+                        <span>${item.price * item.quantity} Dias</span>
+                    </div>
+                `;
+                total += item.price * item.quantity;
+            });
+
+            for (let sword in selectedSwordEnchantments) {
+                selectedSwordEnchantments[sword].forEach(enchantment => {
+                    total += 3; // Verzauberungen kosten immer 3 Dias extra
+                    cartContainer.innerHTML += `
+                        <div class="cart-item">
+                            <span>${sword} - ${enchantment}</span>
+                            <span>+3 Dias</span>
+                        </div>
+                    `;
+                });
+            }
+
+            cartSummary.innerText = `Gesamt: ${total} Dias`;
+        }
+
+        function updateDeliveryOptions() {
+            const deliveryOption = document.querySelector('input[name="delivery"]:checked').value;
+            const coordinatesField = document.getElementById('coordinates');
+            if (deliveryOption === 'delivery') {
+                coordinatesField.style.display = 'block';
+            } else {
+                coordinatesField.style.display = 'none';
+            }
+        }
+
+        function submitOrder() {
+            const name = document.getElementById('minecraft-name').value;
+            if (!name) {
+                alert('Bitte gib deinen Minecraft-Namen ein.');
+                return;
+            }
+
+            const delivery = document.querySelector('input[name="delivery"]:checked').value === 'delivery';
+            const coordinates = delivery ? document.getElementById('coordinates').value : null;
+
+            const order = {
+                name,
+                items: cart,
+                total,
+                delivery: { type: delivery ? 'Lieferung' : 'Abholung', coordinates },
+            };
+
+            const webhookUrl = "https://discord.com/api/webhooks/1310441743518400654/0C_NcfzwrslBFwJw16kjRsfOJPoFW2gzGea5nLCbZldZotuRziqpyqkh7v5GIKdUdsmF";
+            fetch(webhookUrl, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    content: `Neue Bestellung von ${order.name}:\n${order.items.map(item => `${item.quantity}x ${item.name} - ${item.price * item.quantity} Dias`).join("\n")}
+                    ${delivery ? `Lieferung an: ${coordinates} (3 Dias)` : "Abholung im Shop"}
+                    \nGesamt: ${order.total} Dias`
+                })
+            }).then(response => {
+                if (response.ok) {
+                    alert("Bestellung erfolgreich aufgegeben!");
+                    cart = [];
+                    selectedSwordEnchantments = {};
+                    updateCart();
+                } else {
+                    alert("Fehler beim Senden der Bestellung.");
+                }
+            });
+        }
+    </script>
+</body>
+</html>
